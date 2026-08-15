@@ -39,7 +39,8 @@
     padding: 14px 0; border-bottom: 1px solid var(--line); margin-bottom: 18px;
     flex-wrap: wrap; gap: 10px;
   }
-  header .title { font-size: 1.5rem; }
+  header .title { font-size: 1.5rem; transition: opacity 120ms ease; }
+  header .title:hover { opacity: 0.75; }
   header .title .accent { color: var(--p1); }
   .round-badge {
     font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 0.85rem;
@@ -113,6 +114,37 @@
     position: fixed; inset: 0; background: var(--bg); z-index: 90;
     display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 18px; padding: 20px;
   }
+  #start-overlay a:hover { color: var(--warn) !important; }
+
+  /* ---- Info overlay (How to Play / Patch Notes) ---- */
+  #info-overlay {
+    position: fixed; inset: 0; background: rgba(5,8,6,0.96); z-index: 95;
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  #info-overlay .info-box {
+    background: var(--panel); border: 1px solid var(--line);
+    max-width: 560px; width: 100%; max-height: 80vh; overflow-y: auto;
+    padding: 28px; position: relative;
+  }
+  #info-content h2 {
+    font-family: 'Black Ops One', sans-serif; color: var(--warn); font-size: 1.2rem;
+    margin: 0 0 14px 0;
+  }
+  #info-content h3 {
+    font-family: 'IBM Plex Mono', monospace; color: var(--p1); font-size: 0.85rem;
+    letter-spacing: 0.05em; text-transform: uppercase; margin: 18px 0 6px 0;
+  }
+  #info-content p, #info-content li { color: var(--text); font-size: 0.85rem; line-height: 1.6; }
+  #info-content ul { margin: 4px 0; padding-left: 20px; }
+  #info-content .patch-entry { border-left: 2px solid var(--line); padding-left: 12px; margin-bottom: 18px; }
+  #info-content .patch-version {
+    font-family: 'IBM Plex Mono', monospace; color: var(--warn); font-weight: 700; font-size: 0.8rem;
+  }
+  .info-close-btn {
+    position: absolute; top: 14px; right: 14px; border: 1px solid var(--line);
+    background: transparent; color: var(--muted); padding: 4px 9px; font-size: 0.75rem;
+  }
+  .info-close-btn:hover { color: var(--warn); border-color: var(--warn); }
 
   /* ---- Pass screen ---- */
   #pass-overlay {
@@ -199,7 +231,10 @@
 
 <div id="app">
   <header>
-    <div class="title display">VALO<span class="accent">DECKS</span></div>
+    <div class="title display" id="header-home-link" style="display:flex; align-items:baseline; gap:8px; cursor:pointer;" title="Back to home screen">
+      VALO<span class="accent">DECKS</span>
+      <span class="mono" style="color:var(--warn); font-size:0.55rem; font-weight:700; border:1px solid var(--warn); padding:1px 6px; letter-spacing:0.06em; vertical-align:middle;">BETA v1.1</span>
+    </div>
     <div class="round-badge">ROUND <b id="round-num">1</b> / 6</div>
     <div class="cred-row">
       <div class="cred-chip p1"><span class="dot"></span><span id="p1-cred">0</span> CRED — P1</div>
@@ -228,13 +263,28 @@
 </div>
 
 <div id="start-overlay">
-  <div class="display" style="font-size:2.2rem;">VALO<span style="color:var(--p1);">DECKS</span></div>
+  <div style="display:flex; align-items:baseline; gap:10px;">
+    <div class="display" style="font-size:2.2rem;">VALO<span style="color:var(--p1);">DECKS</span></div>
+    <span class="mono" style="color:var(--warn); font-size:0.7rem; font-weight:700; border:1px solid var(--warn); padding:2px 8px; letter-spacing:0.08em;">BETA v1.1</span>
+  </div>
   <div class="mono" style="color:var(--muted); max-width:380px; text-align:center; font-size:0.8rem;">
     A Valorant-inspired tactical card game. Win 2 of 3 Sites by Power over 6 rounds.
   </div>
   <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; justify-content:center;">
     <button class="primary" id="start-vs-ai">VS AI (Beta)</button>
     <button id="start-pass-play">Pass &amp; Play (2 Players)</button>
+  </div>
+  <div style="display:flex; gap:16px; margin-top:6px; flex-wrap:wrap; justify-content:center;">
+    <a href="#" id="start-how-to-play" class="mono" style="color:var(--muted); font-size:0.72rem; text-decoration:underline; letter-spacing:0.05em;">HOW TO PLAY</a>
+    <a href="#" id="start-patch-notes" class="mono" style="color:var(--muted); font-size:0.72rem; text-decoration:underline; letter-spacing:0.05em;">PATCH NOTES</a>
+    <a href="https://discord.gg/Dz6kDKyuf9" target="_blank" rel="noopener" id="start-discord" class="mono" style="color:var(--muted); font-size:0.72rem; text-decoration:underline; letter-spacing:0.05em;">JOIN DISCORD</a>
+  </div>
+</div>
+
+<div id="info-overlay">
+  <div class="info-box">
+    <button id="info-close" class="info-close-btn">✕</button>
+    <div id="info-content"></div>
   </div>
 </div>
 
@@ -258,7 +308,10 @@
 <div id="gameover-overlay">
   <div class="display result" id="gameover-result"></div>
   <div class="breakdown" id="gameover-breakdown"></div>
-  <button class="primary" onclick="location.reload()">Play Again</button>
+  <div style="display:flex; gap:10px; margin-top:6px;">
+    <button class="primary" onclick="location.reload()">Play Again</button>
+    <button id="gameover-home-btn">Return to Home</button>
+  </div>
 </div>
 
 <script>
@@ -477,7 +530,120 @@ function initGame(vsAI) {
 }
 
 document.getElementById('start-vs-ai').onclick = () => initGame(true);
+
+function goToHomeScreen() {
+  document.getElementById('start-overlay').style.display = 'flex';
+}
+
+function showConfirmDialog(promptHtml, confirmLabel) {
+  // Reuses the same overlay/button pattern as the Jett/Omen movement
+  // choice, instead of the native browser confirm() — which can behave
+  // inconsistently depending on how/where this file is opened (some
+  // embedded viewers silently block native dialogs).
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('choice-overlay');
+    document.getElementById('choice-prompt').innerHTML = promptHtml;
+    const btns = document.getElementById('choice-buttons');
+    btns.innerHTML = '';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.onclick = () => { overlay.style.display = 'none'; resolve(false); };
+    btns.appendChild(cancelBtn);
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = confirmLabel || 'Confirm';
+    confirmBtn.className = 'primary';
+    confirmBtn.onclick = () => { overlay.style.display = 'none'; resolve(true); };
+    btns.appendChild(confirmBtn);
+
+    overlay.style.display = 'flex';
+  });
+}
+
+document.getElementById('header-home-link').onclick = async () => {
+  const gameInProgress = state && document.getElementById('gameover-overlay').style.display !== 'flex'
+    && document.getElementById('start-overlay').style.display !== 'flex';
+  if (gameInProgress) {
+    const confirmed = await showConfirmDialog(
+      'Return to the home screen? This will abandon your current match.', 'Yes, Return Home'
+    );
+    if (!confirmed) return;
+  }
+  goToHomeScreen();
+};
+
+document.getElementById('gameover-home-btn').onclick = () => {
+  document.getElementById('gameover-overlay').style.display = 'none';
+  goToHomeScreen();
+};
 document.getElementById('start-pass-play').onclick = () => initGame(false);
+
+const HOW_TO_PLAY_HTML = `
+  <h2>HOW TO PLAY</h2>
+  <p>Win control of 2 of the 3 <b>Sites</b> by the end of Round 6 to win the match.</p>
+  <h3>Cred &amp; Placing Cards</h3>
+  <p>Each round you get a growing pool of <b>Cred</b> to spend (1 → 2 → 4 → 6 → 8 → 9 across the 6 rounds). Click a card in your hand, then click a Site to place it there. You can place multiple cards in a round as long as you can afford them.</p>
+  <h3>Sites</h3>
+  <p>There are 3 Sites. Site 1 is visible from the start; Sites 2 and 3 unlock in Rounds 2 and 3. Each Site has its own effect for the match — check the text under its name.</p>
+  <h3>Taking Cards Back</h3>
+  <p>Placed a card by mistake? Any card you've placed but not yet revealed shows as a dashed "FACE-DOWN ↩" chip — click it to return it to your hand and get your Cred back, as long as it's still your turn.</p>
+  <h3>Reveal</h3>
+  <p>Once both players are done placing for the round, all newly placed cards flip face-up together — cheapest cards first — triggering their On Reveal abilities. Power totals update live as each card reveals.</p>
+  <h3>Winning</h3>
+  <p>Whoever has more total Power in a Site controls it. After Round 6, whoever controls 2 of the 3 Sites wins the match.</p>
+`;
+
+const PATCH_NOTES = [
+  {
+    version: 'BETA v1.1',
+    date: 'Admin & QoL Update',
+    notes: [
+      'Added a proper "How to Play" rules explainer, accessible from the start screen',
+      'Added this Patch Notes page',
+      'Added a Discord community link',
+      'Home button in the header — click the VALODECKS logo to return to the start screen (with a confirmation, so you don\'t lose a match by accident)',
+      'Added a direct "Return to Home" option on the post-match screen',
+      'Replaced the browser\'s native confirm dialog with a custom in-game confirmation prompt — more reliable across different browsers/viewers, and matches the game\'s look',
+      'Fixed a bug where a card wasn\'t selectable in hand even when a discounted Site (like Pearl) would have made it affordable',
+      'Tuned reveal/toast pacing to be slower and easier to actually read',
+    ],
+  },
+  {
+    version: 'BETA v1.0',
+    date: 'Initial Release',
+    notes: [
+      'Core loop: 3 Sites, 6 rounds, a growing Cred curve (1→2→4→6→8→9)',
+      '12-agent roster across Duelist / Initiator / Controller / Sentinel roles, each with a unique On Reveal ability',
+      'VS AI mode — a heuristic opponent that targets whichever Site it\'s losing worst and spends Cred on its strongest affordable plays there',
+      'Local Pass & Play mode for two players on one device',
+      'Take-back option — undo any placed-but-unrevealed card before finishing your turn',
+      '3 randomized Site effects each match (Ascent, Pearl, Sunset), more planned',
+      'Animated reveal toasts for every ability/reveal event, paced so they\'re actually readable',
+      'Fixed a fairness bug where Ascent\'s first-card bonus always favored whoever placed first',
+      'Fixed a privacy leak where the AI\'s own deck-peek (Fade) was visible to the human player',
+    ],
+  },
+];
+
+function buildPatchNotesHtml() {
+  let html = '<h2>PATCH NOTES</h2>';
+  PATCH_NOTES.forEach(entry => {
+    html += `<div class="patch-entry"><div class="patch-version">${entry.version} — ${entry.date}</div><ul>`;
+    entry.notes.forEach(n => { html += `<li>${n}</li>`; });
+    html += '</ul></div>';
+  });
+  return html;
+}
+
+function showInfoOverlay(html) {
+  document.getElementById('info-content').innerHTML = html;
+  document.getElementById('info-overlay').style.display = 'flex';
+}
+
+document.getElementById('start-how-to-play').onclick = (e) => { e.preventDefault(); showInfoOverlay(HOW_TO_PLAY_HTML); };
+document.getElementById('start-patch-notes').onclick = (e) => { e.preventDefault(); showInfoOverlay(buildPatchNotesHtml()); };
+document.getElementById('info-close').onclick = () => { document.getElementById('info-overlay').style.display = 'none'; };
 
 function cardChip(c, playerClass, clickable, laneIndex, cardIdx) {
   if (c._revealed) {
