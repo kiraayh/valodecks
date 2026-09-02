@@ -5,20 +5,24 @@
 <title>VALODECKS — a Valorant card game</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0A0F0C;
-    --panel: #121A16;
-    --panel-2: #182019;
-    --line: #26332B;
-    --text: #E8E6DE;
-    --muted: #6B7570;
+    --bg: #0F1923;
+    --panel: #16212C;
+    --panel-2: #1C2731;
+    --line: #2A3644;
+    --text: #ECE8E1;
+    --muted: #768079;
     --p1: #FF6B35;
     --p1-dim: #6B3018;
     --p2: #3ED6B8;
     --p2-dim: #1E5C50;
-    --warn: #FFD166;
+    --warn: #FF4655;
+    --role-duelist: #FF5C7A;
+    --role-initiator: #FFD166;
+    --role-controller: #A78BFA;
+    --role-sentinel: #6BCB77;
   }
   * { box-sizing: border-box; }
   html, body {
@@ -28,7 +32,7 @@
     font-family: 'IBM Plex Sans', sans-serif;
     min-height: 100vh;
   }
-  .display { font-family: 'Black Ops One', sans-serif; letter-spacing: 0.02em; }
+  .display { font-family: 'Oswald', sans-serif; letter-spacing: 0.02em; text-transform: uppercase; font-weight: 700; }
   .mono { font-family: 'IBM Plex Mono', monospace; }
 
   #app { max-width: 1100px; margin: 0 auto; padding: 16px 16px 40px; }
@@ -42,11 +46,16 @@
   header .title { font-size: 1.5rem; transition: opacity 120ms ease; }
   header .title:hover { opacity: 0.75; }
   header .title .accent { color: var(--p1); }
-  .round-badge {
-    font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 0.85rem;
-    color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
+  .round-tracker { display: flex; align-items: center; gap: 8px; }
+  .round-pips { display: flex; gap: 4px; }
+  .round-pip { width: 18px; height: 6px; background: var(--line); transition: background-color 200ms ease, box-shadow 200ms ease; }
+  .round-pip.done { background: var(--muted); }
+  .round-pip.current { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+  .round-label {
+    font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 0.8rem;
+    color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase;
   }
-  .round-badge b { color: var(--text); }
+  .round-label b { color: var(--text); }
 
   .cred-row { display: flex; gap: 18px; }
   .cred-chip {
@@ -57,39 +66,60 @@
   .cred-chip.p2 { border-color: var(--p2); color: var(--p2); }
   .cred-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 
+  .ult-row { display: flex; gap: 18px; margin-top: 5px; }
+  .ult-chip {
+    font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 0.7rem;
+    padding: 3px 10px; border: 1px solid var(--line); display: inline-block;
+    letter-spacing: 0.03em; transition: box-shadow 200ms ease, border-color 200ms ease, color 200ms ease;
+  }
+  .ult-chip.p1 { color: var(--p1); border-color: var(--p1-dim); }
+  .ult-chip.p2 { color: var(--p2); border-color: var(--p2-dim); }
+  .ult-chip.ready { border-color: var(--warn) !important; color: var(--warn) !important; box-shadow: 0 0 8px rgba(255,70,85,0.35); }
+  .ult-chip.used { opacity: 0.4; text-decoration: line-through; }
+
   /* ---- Sites board ---- */
   #sites { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
   .site {
     background: var(--panel); border: 1px solid var(--line); min-height: 260px;
     display: flex; flex-direction: column; position: relative; overflow: hidden;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
   }
   .site.locked { display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; }
   .site-head {
     padding: 10px 12px; border-bottom: 1px solid var(--line);
     background: var(--panel-2);
   }
-  .site-head .name { font-family: 'Black Ops One', sans-serif; font-size: 1rem; color: var(--warn); }
+  .site-head .name { font-family: 'Oswald', sans-serif; text-transform: uppercase; font-weight: 700; font-size: 1rem; color: var(--warn); display: flex; align-items: center; gap: 7px; }
+  .site-head .name .site-icon { font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; opacity: 0.85; }
   .site-head .effect { font-size: 0.7rem; color: var(--muted); margin-top: 2px; line-height: 1.3; }
-  .site-body { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
-  .lane-row { display: flex; flex-direction: column; gap: 6px; min-height: 60px; }
+  .site-body { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 0; }
+  .lane-row { display: flex; flex-direction: column; gap: 6px; min-height: 60px; padding: 6px 0; }
+  .lane-row + .lane-row { border-top: 1px solid var(--line); }
   .lane-label { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; }
   .lane-label.p1 { color: var(--p1); }
   .lane-label.p2 { color: var(--p2); }
-  .mini-cards { display: flex; flex-wrap: wrap; gap: 4px; }
+  .mini-cards { display: flex; flex-wrap: wrap; gap: 5px; }
   .mini-card {
     font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; font-weight: 600;
-    padding: 3px 6px; border: 1px solid; white-space: nowrap;
+    padding: 3px 7px; border: 1px solid; white-space: nowrap;
   }
   .mini-card.p1 { border-color: var(--p1); color: var(--p1); }
   .mini-card.p2 { border-color: var(--p2); color: var(--p2); }
   .clickable-chip { cursor: pointer; border-style: dashed; transition: background-color 120ms ease; }
-  .clickable-chip:hover { background-color: rgba(255,209,102,0.12); border-color: var(--warn); color: var(--warn); }
+  .clickable-chip:hover { background-color: rgba(255,70,85,0.12); border-color: var(--warn); color: var(--warn); }
   .site-foot {
-    padding: 8px 12px; border-top: 1px solid var(--line);
-    display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-weight: 700;
+    padding: 10px 12px; border-top: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between;
   }
+  .power-tally {
+    font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 1.35rem;
+    opacity: 0.55; transition: opacity 150ms ease, transform 150ms ease;
+  }
+  .power-tally.leading { opacity: 1; transform: scale(1.1); }
+  .power-tally.tied { opacity: 0.85; }
   .power-tally.p1 { color: var(--p1); }
   .power-tally.p2 { color: var(--p2); }
+  .power-vs { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: var(--muted); letter-spacing: 0.1em; }
   .site.won-p1 { box-shadow: inset 0 0 0 2px var(--p1); }
   .site.won-p2 { box-shadow: inset 0 0 0 2px var(--p2); }
   .plant-pulse {
@@ -116,6 +146,30 @@
   }
   #start-overlay a:hover { color: var(--warn) !important; }
 
+  /* ---- Signature selection screen ---- */
+  #signature-overlay {
+    position: fixed; inset: 0; background: var(--bg); z-index: 92;
+    display: none; align-items: center; justify-content: center; flex-direction: column; gap: 6px; padding: 20px;
+  }
+  #signature-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;
+    max-width: 900px; max-height: 62vh; overflow-y: auto; padding: 4px; width: 100%;
+  }
+  .sig-card {
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-top: 4px solid var(--role-color, var(--line));
+    padding: 10px; cursor: pointer; transition: transform 120ms ease, box-shadow 120ms ease;
+  }
+  .sig-card:hover { transform: translateY(-3px); box-shadow: 0 8px 18px rgba(0,0,0,0.4); }
+  .sig-card .sig-name { font-family: 'Oswald', sans-serif; text-transform: uppercase; font-weight: 700; font-size: 0.88rem; }
+  .sig-card .sig-role {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; color: var(--role-color, var(--muted));
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .sig-card .sig-ult-name { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: var(--warn); margin-top: 6px; font-weight: 700; }
+  .sig-card .sig-ult-cost { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: var(--muted); }
+  .sig-card .sig-ult-text { font-size: 0.6rem; color: var(--muted); margin-top: 4px; line-height: 1.3; min-height: 42px; }
+
   /* ---- Info overlay (How to Play / Patch Notes) ---- */
   #info-overlay {
     position: fixed; inset: 0; background: rgba(5,8,6,0.96); z-index: 95;
@@ -127,7 +181,7 @@
     padding: 28px; position: relative;
   }
   #info-content h2 {
-    font-family: 'Black Ops One', sans-serif; color: var(--warn); font-size: 1.2rem;
+    font-family: 'Oswald', sans-serif; text-transform: uppercase; font-weight: 700; color: var(--warn); font-size: 1.2rem;
     margin: 0 0 14px 0;
   }
   #info-content h3 {
@@ -157,21 +211,37 @@
   /* ---- Hand ---- */
   #hand-panel { background: var(--panel); border: 1px solid var(--line); padding: 14px; }
   #hand-panel .label { font-size: 0.7rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
-  #hand { display: flex; gap: 10px; flex-wrap: wrap; }
+  #hand { display: flex; gap: 12px; flex-wrap: wrap; }
   .card {
-    width: 128px; background: var(--panel-2); border: 1px solid var(--line);
-    padding: 8px; cursor: pointer; transition: transform 120ms ease, border-color 120ms ease;
-    display: flex; flex-direction: column; gap: 6px;
+    width: 142px; background: var(--panel-2); border: 1px solid var(--line);
+    border-top: 4px solid var(--role-color, var(--line));
+    cursor: pointer; transition: transform 120ms ease, box-shadow 120ms ease;
+    display: flex; flex-direction: column; overflow: hidden;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
   }
-  .card:hover { transform: translateY(-4px); }
-  .card.selected { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn); }
-  .card.unaffordable { opacity: 0.4; cursor: not-allowed; }
-  .card .card-top { display: flex; justify-content: space-between; align-items: center; }
-  .card .cost { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 0.85rem; color: var(--warn); }
-  .card .role { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-  .card .name { font-family: 'Black Ops One', sans-serif; font-size: 0.85rem; line-height: 1.15; }
-  .card .power { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 1.1rem; }
-  .card .ability { font-size: 0.62rem; color: var(--muted); line-height: 1.25; min-height: 30px; }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 8px 18px rgba(0,0,0,0.45); }
+  .card.selected { box-shadow: 0 0 0 2px var(--warn), 0 8px 18px rgba(0,0,0,0.45); }
+  .card.unaffordable { opacity: 0.35; cursor: not-allowed; }
+  .card .card-top { display: flex; justify-content: space-between; align-items: center; padding: 8px 8px 0 8px; }
+  .card .cost-badge {
+    width: 24px; height: 24px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg); border: 1px solid var(--warn); color: var(--warn);
+    font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 0.8rem;
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  }
+  .card .role-tag {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em; color: var(--role-color, var(--muted));
+  }
+  .card .name { font-family: 'Oswald', sans-serif; text-transform: uppercase; font-weight: 700; font-size: 0.82rem; line-height: 1.15; padding: 7px 8px 0 8px; }
+  .card .power-row { display: flex; align-items: baseline; gap: 5px; padding: 4px 8px 7px 8px; }
+  .card .power-num { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 1.55rem; color: var(--text); line-height: 1; }
+  .card .power-label { font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .card .ability {
+    font-size: 0.6rem; color: var(--muted); line-height: 1.35; padding: 8px;
+    border-top: 1px solid var(--line); min-height: 48px; background: rgba(0,0,0,0.15);
+  }
 
   /* ---- Actions ---- */
   #actions { display: flex; gap: 10px; margin-top: 14px; justify-content: flex-end; }
@@ -179,11 +249,23 @@
     font-family: 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
     background: transparent; color: var(--text); border: 1px solid var(--line);
     padding: 10px 18px; cursor: pointer; font-size: 0.8rem; transition: all 120ms ease;
+    clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px);
   }
   button:hover:not(:disabled) { border-color: var(--warn); color: var(--warn); }
   button:disabled { opacity: 0.35; cursor: not-allowed; }
   button.primary { border-color: var(--p1); color: var(--p1); }
   button.primary:hover:not(:disabled) { background: rgba(255,107,53,0.1); }
+  .ultimate-btn {
+    margin-right: auto;
+    border-color: var(--warn) !important; color: var(--warn) !important;
+    box-shadow: 0 0 12px rgba(255,70,85,0.4);
+    animation: ultPulse 1.6s ease-in-out infinite;
+  }
+  .ultimate-btn:hover:not(:disabled) { background: rgba(255,70,85,0.12) !important; }
+  @keyframes ultPulse {
+    0%, 100% { box-shadow: 0 0 10px rgba(255,70,85,0.35); }
+    50% { box-shadow: 0 0 18px rgba(255,70,85,0.65); }
+  }
 
   /* ---- Log ---- */
   #log { margin-top: 14px; background: var(--panel); border: 1px solid var(--line); padding: 12px; max-height: 140px; overflow-y: auto; }
@@ -233,12 +315,21 @@
   <header>
     <div class="title display" id="header-home-link" style="display:flex; align-items:baseline; gap:8px; cursor:pointer;" title="Back to home screen">
       VALO<span class="accent">DECKS</span>
-      <span class="mono" style="color:var(--warn); font-size:0.55rem; font-weight:700; border:1px solid var(--warn); padding:1px 6px; letter-spacing:0.06em; vertical-align:middle;">BETA v1.1</span>
+      <span class="mono" style="color:var(--warn); font-size:0.55rem; font-weight:700; border:1px solid var(--warn); padding:1px 6px; letter-spacing:0.06em; vertical-align:middle;">BETA v2.0</span>
     </div>
-    <div class="round-badge">ROUND <b id="round-num">1</b> / 6</div>
-    <div class="cred-row">
-      <div class="cred-chip p1"><span class="dot"></span><span id="p1-cred">0</span> CRED — P1</div>
-      <div class="cred-chip p2"><span class="dot"></span><span id="p2-cred">0</span> CRED — P2</div>
+    <div class="round-tracker">
+      <div class="round-pips" id="round-pips"></div>
+      <span class="round-label">ROUND <b id="round-num">1</b>/6</span>
+    </div>
+    <div>
+      <div class="cred-row">
+        <div class="cred-chip p1"><span class="dot"></span><span id="p1-cred">0</span> CRED — P1</div>
+        <div class="cred-chip p2"><span class="dot"></span><span id="p2-cred">0</span> CRED — P2</div>
+      </div>
+      <div class="ult-row">
+        <div class="ult-chip p1" id="p1-ult-chip"></div>
+        <div class="ult-chip p2" id="p2-ult-chip"></div>
+      </div>
     </div>
   </header>
 
@@ -252,6 +343,7 @@
   </div>
 
   <div id="actions">
+    <button id="btn-ultimate" class="ultimate-btn" style="display:none;"></button>
     <button id="btn-clear">Clear Selection</button>
     <button id="btn-done" class="primary">Done Placing — Pass Device</button>
   </div>
@@ -265,7 +357,7 @@
 <div id="start-overlay">
   <div style="display:flex; align-items:baseline; gap:10px;">
     <div class="display" style="font-size:2.2rem;">VALO<span style="color:var(--p1);">DECKS</span></div>
-    <span class="mono" style="color:var(--warn); font-size:0.7rem; font-weight:700; border:1px solid var(--warn); padding:2px 8px; letter-spacing:0.08em;">BETA v1.1</span>
+    <span class="mono" style="color:var(--warn); font-size:0.7rem; font-weight:700; border:1px solid var(--warn); padding:2px 8px; letter-spacing:0.08em;">BETA v2.0</span>
   </div>
   <div class="mono" style="color:var(--muted); max-width:380px; text-align:center; font-size:0.8rem;">
     A Valorant-inspired tactical card game. Win 2 of 3 Sites by Power over 6 rounds.
@@ -279,6 +371,14 @@
     <a href="#" id="start-patch-notes" class="mono" style="color:var(--muted); font-size:0.72rem; text-decoration:underline; letter-spacing:0.05em;">PATCH NOTES</a>
     <a href="https://discord.gg/Dz6kDKyuf9" target="_blank" rel="noopener" id="start-discord" class="mono" style="color:var(--muted); font-size:0.72rem; text-decoration:underline; letter-spacing:0.05em;">JOIN DISCORD</a>
   </div>
+</div>
+
+<div id="signature-overlay">
+  <div class="display" style="font-size:1.6rem; margin-bottom:2px;" id="signature-title">CHOOSE YOUR SIGNATURE</div>
+  <div class="mono" style="color:var(--muted); font-size:0.78rem; margin-bottom:16px; text-align:center; max-width:440px;">
+    Your Signature's Ultimate charges up automatically as you play (+1 per round, +1 per Site you're leading) — pick who you want to build toward.
+  </div>
+  <div id="signature-grid"></div>
 </div>
 
 <div id="info-overlay">
@@ -356,6 +456,17 @@ const CARD_POOL = [
       } else {
         announce(`<b>${ctx.owner.name}'s Sova</b> reveals: opponent's hand is empty.`, ctx.owner === state.players[0] ? 'var(--p1)' : 'var(--p2)');
       }
+    },
+    ultCost: 7,
+    ultimateName: "Hunter's Fury",
+    ultimateText: 'All enemy cards, every lane, lose 2 Power.',
+    ultimate: (ctx) => {
+      ctx.opponent.board.forEach(laneCards => {
+        laneCards.forEach(c => { c.power = Math.max(0, c.power - 2); });
+      });
+      announce(`<b>${ctx.owner.name}</b> unleashes <b>Hunter's Fury</b> — every enemy card loses 2 Power!`,
+        ctx.owner === state.players[0] ? 'var(--p1)' : 'var(--p2)');
+      render();
     }
   },
   { id: 'omen',    name: 'Omen',    role: 'Controller', cost: 2, power: 3,
@@ -371,7 +482,8 @@ const CARD_POOL = [
     }
   },
   { id: 'kayo',    name: 'KAY/O',   role: 'Initiator', cost: 2, power: 2,
-    ability: "On Reveal: suppress one enemy On Reveal ability in this lane this round.",
+    ability: "Always reveals first. On Reveal: suppress one enemy On Reveal ability in this lane this round.",
+    revealFirst: true,
     onReveal: (ctx) => {
       const oppCards = ctx.opponent.board[ctx.laneIndex].filter(c => c._justPlayed && !c._suppressed && !c._revealed);
       if (oppCards.length) {
@@ -381,6 +493,16 @@ const CARD_POOL = [
       } else {
         announce(`<b>${ctx.owner.name}'s KAY/O</b> finds nothing new to suppress here.`, ctx.owner === state.players[0] ? 'var(--p1)' : 'var(--p2)');
       }
+    },
+    ultCost: 7,
+    ultimateName: 'NULL/cmd',
+    ultimateText: "Permanently disable the opponent's Signature Ultimate.",
+    ultimate: (ctx) => {
+      ctx.opponent._ultDisabled = true;
+      const stillUsable = !ctx.opponent.ultUsed;
+      announce(`<b>${ctx.owner.name}</b> activates <b>NULL/cmd</b> — opponent's Ultimate is disabled${stillUsable ? '!' : ' (though they already used theirs).'}`,
+        ctx.owner === state.players[0] ? 'var(--p1)' : 'var(--p2)');
+      render();
     }
   },
   { id: 'killjoy', name: 'Killjoy', role: 'Sentinel', cost: 3, power: 4,
@@ -410,8 +532,9 @@ const CARD_POOL = [
       if (myPower < oppPower) {
         const oppCards = ctx.opponent.board[ctx.laneIndex];
         if (oppCards.length) {
-          oppCards.sort((a,b) => a.power - b.power);
-          const destroyed = oppCards.shift();
+          const sorted = [...oppCards].sort((a,b) => a.power - b.power);
+          const destroyed = sorted[0];
+          destroyCard(ctx.opponent, ctx.laneIndex, destroyed);
           ctx.card.power += 2;
           announce(`<b>${ctx.owner.name}'s Reyna</b> dominates: destroys <b>${destroyed.name}</b>, gains +2 Power.`, ctx.owner === state.players[0] ? 'var(--p1)' : 'var(--p2)');
         }
@@ -443,9 +566,34 @@ const CARD_POOL = [
         target.power = Math.max(0, target.power - 2);
         announce(`<b>${ctx.owner.name}'s Raze</b> blasts <b>${target.name}</b> for -2 Power.`, ctx.owner === state.players[0] ? 'var(--p1)' : 'var(--p2)');
       }
+    },
+    ultCost: 6,
+    ultimateName: 'Showstopper',
+    ultimateText: 'Destroy the single highest-Power enemy card anywhere on the board.',
+    ultimate: (ctx) => {
+      let highest = null, highestLane = -1;
+      ctx.opponent.board.forEach((laneCards, li) => {
+        laneCards.forEach(c => { if (!highest || c.power > highest.power) { highest = c; highestLane = li; } });
+      });
+      const ownerColor = ctx.owner === state.players[0] ? 'var(--p1)' : 'var(--p2)';
+      if (highest) {
+        destroyCard(ctx.opponent, highestLane, highest);
+        announce(`<b>${ctx.owner.name}</b> uses <b>Showstopper</b> — destroys <b>${highest.name}</b>!`, ownerColor);
+      } else {
+        announce(`<b>${ctx.owner.name}</b> uses <b>Showstopper</b> — no target found.`, ownerColor);
+      }
+      render();
     }
   },
 ];
+
+// Plain geometric glyphs, not emoji — avoids any risk of auto-rendering
+// as full-color pictographs on different platforms/fonts.
+const SITE_ICONS = {
+  ASCENT: '▲',
+  PEARL: '◆',
+  SUNSET: '◐',
+};
 
 // =========================================================================
 // SITE POOL — v1 ships with 3 clean numeric effects (movement/reveal-type
@@ -499,6 +647,11 @@ function makePlayer(name, isAI) {
     hand: deck.splice(0, 3),
     cred: 0,
     board: [[], [], []],
+    graveyard: [],
+    signature: null,   // set during Signature selection, before the match starts
+    ultPoints: 0,
+    ultUsed: false,
+    _ultDisabled: false,  // set by an opponent's KAY/O Ultimate
   };
 }
 
@@ -524,8 +677,74 @@ function initGame(vsAI) {
     phase: 'placing',
   };
   document.getElementById('start-overlay').style.display = 'none';
+
+  // AI always auto-picks its own Signature immediately (randomly, from
+  // agents that actually have a working Ultimate implemented)
+  const ultimateCapableAgents = CARD_POOL.filter(c => c.ultimate);
+  state.players.forEach(player => {
+    if (player.isAI) {
+      player.signature = ultimateCapableAgents[Math.floor(Math.random() * ultimateCapableAgents.length)];
+    }
+  });
+
+  // Queue up Signature selection for every HUMAN player, in order —
+  // handles both VS AI (queue of 1) and Pass & Play (queue of 2, with a
+  // pass-device moment between each pick so choices stay private)
+  state.signaturePickQueue = [];
+  state.players.forEach((p, i) => { if (!p.isAI) state.signaturePickQueue.push(i); });
+  promptNextSignaturePick();
+}
+
+function promptNextSignaturePick() {
+  if (state.signaturePickQueue.length === 0) {
+    beginMatch();
+    return;
+  }
+  const playerIdx = state.signaturePickQueue[0];
+  showSignatureSelectScreen(state.players[playerIdx], () => {
+    state.signaturePickQueue.shift();
+    if (state.signaturePickQueue.length > 0) {
+      const nextName = state.players[state.signaturePickQueue[0]].name;
+      showPassOverlay(`PASS TO ${nextName.toUpperCase()}`, promptNextSignaturePick);
+    } else {
+      promptNextSignaturePick();
+    }
+  });
+}
+
+function showSignatureSelectScreen(player, onPicked) {
+  document.getElementById('signature-title').textContent = `${player.name.toUpperCase()}, CHOOSE YOUR SIGNATURE`;
+  const grid = document.getElementById('signature-grid');
+  grid.innerHTML = '';
+
+  CARD_POOL.filter(c => c.ultimate).forEach(agent => {
+    const div = document.createElement('div');
+    div.className = 'sig-card';
+    div.style.setProperty('--role-color', roleColor(agent.role));
+    div.innerHTML = `
+      <div class="sig-role">${agent.role}</div>
+      <div class="sig-name">${agent.name}</div>
+      <div class="sig-ult-name">${agent.ultimateName}</div>
+      <div class="sig-ult-cost">Ult Cost: ${agent.ultCost}</div>
+      <div class="sig-ult-text">${agent.ultimateText}</div>
+    `;
+    div.onclick = () => {
+      player.signature = agent;
+      document.getElementById('signature-overlay').style.display = 'none';
+      onPicked();
+    };
+    grid.appendChild(div);
+  });
+
+  document.getElementById('signature-overlay').style.display = 'flex';
+}
+
+function beginMatch() {
   state.players.forEach(player => { player.cred = currentCredCap(); });
   log(`Match started. Sites this game: ${state.sites.map(s => s.name).join(', ')}.`);
+  state.players.forEach(p => {
+    log(`<b>${p.name}</b>'s Signature: <b>${p.signature.name}</b> (${p.signature.ultimateName}, Ult Cost ${p.signature.ultCost}).`);
+  });
   render();
 }
 
@@ -595,6 +814,25 @@ const HOW_TO_PLAY_HTML = `
 `;
 
 const PATCH_NOTES = [
+  {
+    version: 'BETA v2.0',
+    date: 'Ultimates & Valorant Theming',
+    notes: [
+      '<b>New: Ultimates.</b> Pick a Signature agent before the match — their Ultimate charges up automatically (+1 Ult Point per round, +1 per Site you\'re currently leading) and activates once, any time you\'re eligible',
+      'Signature selection screen added for both VS AI and Pass & Play (each human picks privately, with a pass-device moment between)',
+      '3 working Ultimates so far: Sova\'s Hunter\'s Fury (all enemy cards lose 2 Power), Raze\'s Showstopper (destroys the single highest-Power enemy card), KAY/O\'s NULL/cmd (permanently disables the opponent\'s Ultimate)',
+      'The AI now uses its Ultimate automatically as soon as it\'s eligible',
+      'KAY/O now always reveals first, regardless of cost — his suppress ability no longer gets skipped by a cheaper card revealing ahead of him',
+      'Extended the fair random tiebreak system to reveal-priority ties too (e.g. a mirror KAY/O-vs-KAY/O matchup)',
+      'Added a graveyard system, tracking destroyed cards — groundwork for Sage\'s resurrection Ultimate, coming in a later phase',
+      '<b>Visual pass:</b> role-based color coding on hand cards (Duelist / Initiator / Controller / Sentinel), Power as the dominant visual element on each card, hexagonal cost badge, clear leading/trailing indicators on Site power tallies, small icons per Site type, a segmented 6-pip round tracker, and a divider between the two players\' rows on each Site',
+      'Removed the ⚡ emoji in favor of clean typography, more consistent with the rest of the UI',
+      '<b>Valorant theming pass:</b> switched to the real navy-black "smoke" background and true Valorant red as the accent/highlight color, replacing the earlier invented tactical-green/amber combo',
+      'Swapped the display font from Black Ops One (military stencil) to Oswald (bold condensed) — closer to the real broadcast-HUD energy Valorant\'s own UI uses',
+      'Added angular cut corners to every button and hand card, matching Valorant\'s actual panel shape language',
+      'Retuned Duelist\'s role color, which had drifted too close to the new red accent and was competing visually with the Ultimate-ready glow',
+    ],
+  },
   {
     version: 'BETA v1.1',
     date: 'Admin & QoL Update',
@@ -690,10 +928,67 @@ function announce(msg, colorVar) {
 // =========================================================================
 // RENDERING
 // =========================================================================
+function updateUltChip(chipId, player) {
+  const el = document.getElementById(chipId);
+  if (!player.signature) { el.textContent = ''; el.onclick = null; return; }
+  el.classList.remove('ready', 'used');
+  el.style.cursor = 'pointer';
+  el.title = 'Click for Ultimate details';
+
+  if (player.ultUsed) {
+    el.classList.add('used');
+    el.textContent = `${player.signature.name} ULT USED`;
+  } else if (player._ultDisabled) {
+    el.classList.add('used');
+    el.textContent = `${player.signature.name} ULT DISABLED`;
+  } else {
+    const ready = player.ultPoints >= player.signature.ultCost;
+    if (ready) el.classList.add('ready');
+    el.textContent = `${player.signature.name}: ${Math.min(player.ultPoints, player.signature.ultCost)}/${player.signature.ultCost}`;
+  }
+
+  // Signature picks are public information from the start of the match
+  // (announced in the log for both players), so showing full Ultimate
+  // details for either player — not just your own — isn't a privacy leak.
+  el.onclick = () => showUltimateDetails(player);
+}
+
+function showUltimateDetails(player) {
+  const sig = player.signature;
+  if (!sig) return;
+  let statusLine;
+  if (player.ultUsed) {
+    statusLine = `<span style="color:var(--muted);">Already used this match.</span>`;
+  } else if (player._ultDisabled) {
+    statusLine = `<span style="color:var(--muted);">Disabled by an opponent's Ultimate.</span>`;
+  } else {
+    const ready = player.ultPoints >= sig.ultCost;
+    statusLine = ready
+      ? `<span style="color:var(--warn); font-weight:700;">Ready to activate!</span>`
+      : `<span style="color:var(--text);">${player.ultPoints} / ${sig.ultCost} Ult Points</span>`;
+  }
+  showInfoOverlay(`
+    <h2>${player.name.toUpperCase()}'S SIGNATURE</h2>
+    <p><span style="color: ${roleColor(sig.role)}; font-family:'IBM Plex Mono',monospace; font-size:0.7rem; letter-spacing:0.05em; text-transform:uppercase;">${sig.role}</span><br>
+    <b style="font-family:'Oswald',sans-serif; text-transform:uppercase; font-weight:700; font-size:1.3rem;">${sig.name}</b></p>
+    <h3>${sig.ultimateName} — Cost ${sig.ultCost}</h3>
+    <p>${sig.ultimateText}</p>
+    <p style="margin-top:14px;">${statusLine}</p>
+  `);
+}
+
 function render() {
   document.getElementById('round-num').textContent = state.round;
   document.getElementById('p1-cred').textContent = state.players[0].cred;
   document.getElementById('p2-cred').textContent = state.players[1].cred;
+  updateUltChip('p1-ult-chip', state.players[0]);
+  updateUltChip('p2-ult-chip', state.players[1]);
+
+  document.getElementById('round-pips').innerHTML = Array.from({ length: 6 }, (_, i) => {
+    const r = i + 1;
+    const cls = r < state.round ? 'done' : r === state.round ? 'current' : '';
+    return `<span class="round-pip ${cls}"></span>`;
+  }).join('');
 
   // Turn banner
   const banner = document.getElementById('turn-banner');
@@ -702,6 +997,16 @@ function render() {
   banner.textContent = `${active.name.toUpperCase()}'S TURN TO PLACE CARDS`;
 
   document.getElementById('actions').style.display = active.isAI ? 'none' : 'flex';
+
+  const ultBtn = document.getElementById('btn-ultimate');
+  const ultEligible = !active.isAI && active.signature && !active.ultUsed && !active._ultDisabled
+    && active.ultPoints >= active.signature.ultCost;
+  if (ultEligible) {
+    ultBtn.style.display = '';
+    ultBtn.textContent = `Activate Ultimate: ${active.signature.ultimateName}`;
+  } else {
+    ultBtn.style.display = 'none';
+  }
 
   // Sites
   const sitesEl = document.getElementById('sites');
@@ -726,9 +1031,14 @@ function render() {
     const p1Clickable = (active === state.players[0] && !active.isAI);
     const p2Clickable = (active === state.players[1] && !active.isAI);
 
+    const isTied = p1Power === p2Power;
+    const p1TallyClass = isTied ? 'tied' : (p1Power > p2Power ? 'leading' : '');
+    const p2TallyClass = isTied ? 'tied' : (p2Power > p1Power ? 'leading' : '');
+    const siteIcon = SITE_ICONS[site.name] || '■';
+
     div.innerHTML = `
       <div class="site-head">
-        <div class="name display">${site.name}</div>
+        <div class="name display"><span class="site-icon">${siteIcon}</span>${site.name}</div>
         <div class="effect">${site.effect}</div>
       </div>
       <div class="site-body">
@@ -742,8 +1052,9 @@ function render() {
         </div>
       </div>
       <div class="site-foot">
-        <span class="power-tally p1">${p1Power}</span>
-        <span class="power-tally p2">${p2Power}</span>
+        <span class="power-tally p1 ${p1TallyClass}">${p1Power}</span>
+        <span class="power-vs">VS</span>
+        <span class="power-tally p2 ${p2TallyClass}">${p2Power}</span>
       </div>
     `;
     sitesEl.appendChild(div);
@@ -775,6 +1086,16 @@ function currentCredCap() {
   return CRED_CURVE[state.round - 1];
 }
 
+function roleColor(role) {
+  const map = {
+    Duelist: 'var(--role-duelist)',
+    Initiator: 'var(--role-initiator)',
+    Controller: 'var(--role-controller)',
+    Sentinel: 'var(--role-sentinel)',
+  };
+  return map[role] || 'var(--muted)';
+}
+
 function renderHand() {
   const player = state.players[state.activePlayerIndex];
   const handEl = document.getElementById('hand');
@@ -801,12 +1122,16 @@ function renderHand() {
 
     const div = document.createElement('div');
     div.className = 'card';
+    div.style.setProperty('--role-color', roleColor(card.role));
     if (!canAfford) div.classList.add('unaffordable');
     if (state.selectedCardIndex === idx) div.classList.add('selected');
     div.innerHTML = `
-      <div class="card-top"><span class="cost">${card.cost}c</span><span class="role">${card.role}</span></div>
+      <div class="card-top">
+        <span class="cost-badge">${card.cost}</span>
+        <span class="role-tag">${card.role}</span>
+      </div>
       <div class="name display">${card.name}</div>
-      <div class="power">⚡ ${card.power}</div>
+      <div class="power-row"><span class="power-num">${card.power}</span><span class="power-label">POWER</span></div>
       <div class="ability">${card.ability}</div>
     `;
     div.onclick = () => {
@@ -822,6 +1147,19 @@ function renderHand() {
     siteEl.style.cursor = state.selectedCardIndex !== null ? 'pointer' : 'default';
     siteEl.onclick = () => placeSelectedCard(idx);
   });
+}
+
+function destroyCard(owner, laneIndex, card) {
+  // Removes a card from play permanently (unlike removePlacement, which
+  // only undoes an unrevealed placement). Tracks it in the owner's own
+  // graveyard — the card goes to whoever OWNED it, not whoever destroyed
+  // it, since that's whose future Sage would resurrect it.
+  const idx = owner.board[laneIndex].indexOf(card);
+  if (idx === -1) return false;
+  owner.board[laneIndex].splice(idx, 1);
+  owner.graveyard = owner.graveyard || [];
+  owner.graveyard.push({ card, laneIndex });
+  return true;
 }
 
 function applyPlacement(player, cardIndex, laneIndex) {
@@ -878,6 +1216,15 @@ function placeSelectedCard(laneIndex) {
 // =========================================================================
 document.getElementById('btn-clear').onclick = () => { state.selectedCardIndex = null; renderHand(); };
 
+document.getElementById('btn-ultimate').onclick = () => {
+  const player = state.players[state.activePlayerIndex];
+  const opponent = state.players[1 - state.activePlayerIndex];
+  if (!player.signature || player.ultUsed || player._ultDisabled || player.ultPoints < player.signature.ultCost) return;
+  player.ultUsed = true;
+  player.signature.ultimate({ owner: player, opponent });
+  render();
+};
+
 document.getElementById('btn-done').onclick = () => {
   if (state.activePlayerIndex === 0) {
     state.activePlayerIndex = 1;
@@ -896,6 +1243,18 @@ async function runAITurn() {
   const ai = state.players[1];
   const human = state.players[0];
   document.getElementById('btn-done').disabled = true;
+
+  // AI uses its Ultimate as soon as it's eligible — simple "use it ASAP"
+  // heuristic, activated before placement so effects like Sova/Raze
+  // weakening the opponent's board also inform its lane-targeting below.
+  if (ai.signature && !ai.ultUsed && !ai._ultDisabled && ai.ultPoints >= ai.signature.ultCost) {
+    await sleep(400);
+    ai.ultUsed = true;
+    ai.signature.ultimate({ owner: ai, opponent: human });
+    render();
+    await sleep(600);
+  }
+
   log(`<b>${ai.name}</b> is planning their placements...`);
   await sleep(500);
 
@@ -946,13 +1305,15 @@ async function runAITurn() {
   resolveReveal();
 }
 
-function showPassOverlay(title) {
+function showPassOverlay(title, onContinue) {
   document.getElementById('pass-title').textContent = title;
   document.getElementById('pass-overlay').style.display = 'flex';
+  _passContinueCallback = onContinue || render;
 }
+let _passContinueCallback = render;
 document.getElementById('pass-continue').onclick = () => {
   document.getElementById('pass-overlay').style.display = 'none';
-  render();
+  _passContinueCallback();
 };
 
 function maybeMove(ctx, agentName) {
@@ -1019,17 +1380,26 @@ async function resolveReveal() {
     });
   });
 
-  // Shuffle FIRST, then stable-sort by cost ascending. Player 1 always
-  // places cards before Player 2/AI in our turn structure, which meant
-  // equal-cost cards would always resolve in Player 1's favor (their
-  // cards get pushed into this array first, and Array.sort is stable).
-  // Shuffling before the sort gives tied costs a genuinely fair random
+  // Shuffle FIRST, then stable-sort. Player 1 always places cards before
+  // Player 2/AI in our turn structure, which meant equal-priority cards
+  // would always resolve in Player 1's favor (their cards get pushed into
+  // this array first, and Array.sort is stable). Shuffling before the
+  // sort gives every tie — cost ties, and now revealFirst ties too, e.g.
+  // if both players reveal KAY/O the same round — a genuinely fair random
   // order instead of a hidden structural bias toward whoever moved first.
   for (let i = pending.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pending[i], pending[j]] = [pending[j], pending[i]];
   }
-  pending.sort((a, b) => a.card.cost - b.card.cost);
+  pending.sort((a, b) => {
+    // revealFirst cards (e.g. KAY/O) always precede everyone else,
+    // regardless of cost — his suppress ability is worthless if a cheap
+    // card like Fade/Breach reveals ahead of him just because it costs less.
+    const aFirst = a.card.revealFirst ? 0 : 1;
+    const bFirst = b.card.revealFirst ? 0 : 1;
+    if (aFirst !== bFirst) return aFirst - bFirst;
+    return a.card.cost - b.card.cost;
+  });
 
   for (const ctx of pending) {
     const ownerColor = ctx.owner === state.players[0] ? 'var(--p1)' : 'var(--p2)';
@@ -1095,8 +1465,10 @@ function advanceRound() {
     }
   }
 
-  // New cred cap each round, reduced by any pending Breach penalty
-  state.players.forEach(player => {
+  // New cred cap each round, reduced by any pending Breach penalty.
+  // Also accrue Ult Points here: +1 automatically, +1 per revealed Site
+  // the player is currently leading in Power.
+  state.players.forEach((player, pIdx) => {
     let cap = currentCredCap();
     if (player._credPenaltyNextRound) {
       cap = Math.max(0, cap - player._credPenaltyNextRound);
@@ -1105,6 +1477,15 @@ function advanceRound() {
     }
     player.cred = cap;
     if (player.deck.length) player.hand.push(player.deck.shift());
+
+    const opponent = state.players[1 - pIdx];
+    const sitesLed = state.sites.reduce((count, site, li) => {
+      if (!site.revealed) return count;
+      return lanePower(player, li) > lanePower(opponent, li) ? count + 1 : count;
+    }, 0);
+    const ultGain = 1 + sitesLed;
+    player.ultPoints += ultGain;
+    log(`<b>${player.name}</b> gains ${ultGain} Ult Point${ultGain === 1 ? '' : 's'} (leading ${sitesLed} Site${sitesLed === 1 ? '' : 's'}) — now ${player.ultPoints}/${player.signature.ultCost}.`);
   });
 
   state.activePlayerIndex = 0;
